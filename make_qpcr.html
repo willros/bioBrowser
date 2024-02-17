@@ -1,0 +1,310 @@
+<html>
+<head>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #information {
+            flex: 1;
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            width: 500px;
+            height: 300px;
+            max-height:300px;
+            min-height:300px;
+            
+        }
+        #title {
+            flex: 1;
+            min-height:30;
+            max-height:30;
+            
+        }
+        
+        #bild {
+            flex: 1;
+        }
+    </style>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <py-config>
+        packages = [
+            "matplotlib",
+            "pandas",
+            "numpy",
+        ]
+    </py-config>
+</head>
+<body>
+    <div id="header"> 
+        <h1> Make qPCR </h1>
+    </div>
+    <textarea id="title" placeholder="Experiment name"></textarea>
+    <form>
+        <label class="radio-inline">
+          <input type="radio" name="replicate" id="singleton">Singleton
+        </label>
+        <label class="radio-inline">
+          <input type="radio" name="replicate" id="duplicate" checked>Duplicate
+        </label>
+    </form>
+    <textarea id="information" placeholder="Type something...">
+A1 H1 bacteria 200 
+A3 H3 human 1,2,3,4,5,6,7,8
+	</textarea>
+    <button py-click="main()" id="parseButton" class="py-button">Add samples</button>
+    <div id="bild"></div>
+    <py-script>
+        from js import document, console
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        from io import StringIO
+        from datetime import datetime
+        import string
+        
+        def make_plate():
+            plate = (
+                pd.DataFrame
+                ({
+                    'rows': {0: 'A', 1: 'A', 2: 'A', 3: 'A', 4: 'A', 5: 'A', 6: 'A', 7: 'A', 8: 'A', 9: 'A', 10: 'A', 11: 'A', 12: 'B', 13: 'B', 14: 'B', 15: 'B', 16: 'B', 17: 'B', 18: 'B', 19: 'B', 20: 'B', 21: 'B', 22: 'B', 23: 'B', 24: 'C', 25: 'C', 26: 'C', 27: 'C', 28: 'C', 29: 'C', 30: 'C', 31: 'C', 32: 'C', 33: 'C', 34: 'C', 35: 'C', 36: 'D', 37: 'D', 38: 'D', 39: 'D', 40: 'D', 41: 'D', 42: 'D', 43: 'D', 44: 'D', 45: 'D', 46: 'D', 47: 'D', 48: 'E', 49: 'E', 50: 'E', 51: 'E', 52: 'E', 53: 'E', 54: 'E', 55: 'E', 56: 'E', 57: 'E', 58: 'E', 59: 'E', 60: 'F', 61: 'F', 62: 'F', 63: 'F', 64: 'F', 65: 'F', 66: 'F', 67: 'F', 68: 'F', 69: 'F', 70: 'F', 71: 'F', 72: 'G', 73: 'G', 74: 'G', 75: 'G', 76: 'G', 77: 'G', 78: 'G', 79: 'G', 80: 'G', 81: 'G', 82: 'G', 83: 'G', 84: 'H', 85: 'H', 86: 'H', 87: 'H', 88: 'H', 89: 'H', 90: 'H', 91: 'H', 92: 'H', 93: 'H', 94: 'H', 95: 'H'}, 'columns': {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 12, 12: 1, 13: 2, 14: 3, 15: 4, 16: 5, 17: 6, 18: 7, 19: 8, 20: 9, 21: 10, 22: 11, 23: 12, 24: 1, 25: 2, 26: 3, 27: 4, 28: 5, 29: 6, 30: 7, 31: 8, 32: 9, 33: 10, 34: 11, 35: 12, 36: 1, 37: 2, 38: 3, 39: 4, 40: 5, 41: 6, 42: 7, 43: 8, 44: 9, 45: 10, 46: 11, 47: 12, 48: 1, 49: 2, 50: 3, 51: 4, 52: 5, 53: 6, 54: 7, 55: 8, 56: 9, 57: 10, 58: 11, 59: 12, 60: 1, 61: 2, 62: 3, 63: 4, 64: 5, 65: 6, 66: 7, 67: 8, 68: 9, 69: 10, 70: 11, 71: 12, 72: 1, 73: 2, 74: 3, 75: 4, 76: 5, 77: 6, 78: 7, 79: 8, 80: 9, 81: 10, 82: 11, 83: 12, 84: 1, 85: 2, 86: 3, 87: 4, 88: 5, 89: 6, 90: 7, 91: 8, 92: 9, 93: 10, 94: 11, 95: 12}, 'well': {0: 'A1', 1: 'A2', 2: 'A3', 3: 'A4', 4: 'A5', 5: 'A6', 6: 'A7', 7: 'A8', 8: 'A9', 9: 'A10', 10: 'A11', 11: 'A12', 12: 'B1', 13: 'B2', 14: 'B3', 15: 'B4', 16: 'B5', 17: 'B6', 18: 'B7', 19: 'B8', 20: 'B9', 21: 'B10', 22: 'B11', 23: 'B12', 24: 'C1', 25: 'C2', 26: 'C3', 27: 'C4', 28: 'C5', 29: 'C6', 30: 'C7', 31: 'C8', 32: 'C9', 33: 'C10', 34: 'C11', 35: 'C12', 36: 'D1', 37: 'D2', 38: 'D3', 39: 'D4', 40: 'D5', 41: 'D6', 42: 'D7', 43: 'D8', 44: 'D9', 45: 'D10', 46: 'D11', 47: 'D12', 48: 'E1', 49: 'E2', 50: 'E3', 51: 'E4', 52: 'E5', 53: 'E6', 54: 'E7', 55: 'E8', 56: 'E9', 57: 'E10', 58: 'E11', 59: 'E12', 60: 'F1', 61: 'F2', 62: 'F3', 63: 'F4', 64: 'F5', 65: 'F6', 66: 'F7', 67: 'F8', 68: 'F9', 69: 'F10', 70: 'F11', 71: 'F12', 72: 'G1', 73: 'G2', 74: 'G3', 75: 'G4', 76: 'G5', 77: 'G6', 78: 'G7', 79: 'G8', 80: 'G9', 81: 'G10', 82: 'G11', 83: 'G12', 84: 'H1', 85: 'H2', 86: 'H3', 87: 'H4', 88: 'H5', 89: 'H6', 90: 'H7', 91: 'H8', 92: 'H9', 93: 'H10', 94: 'H11', 95: 'H12'}, 'well_number': {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13, 14: 14, 15: 15, 16: 16, 17: 17, 18: 18, 19: 19, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30, 31: 31, 32: 32, 33: 33, 34: 34, 35: 35, 36: 36, 37: 37, 38: 38, 39: 39, 40: 40, 41: 41, 42: 42, 43: 43, 44: 44, 45: 45, 46: 46, 47: 47, 48: 48, 49: 49, 50: 50, 51: 51, 52: 52, 53: 53, 54: 54, 55: 55, 56: 56, 57: 57, 58: 58, 59: 59, 60: 60, 61: 61, 62: 62, 63: 63, 64: 64, 65: 65, 66: 66, 67: 67, 68: 68, 69: 69, 70: 70, 71: 71, 72: 72, 73: 73, 74: 74, 75: 75, 76: 76, 77: 77, 78: 78, 79: 79, 80: 80, 81: 81, 82: 82, 83: 83, 84: 84, 85: 85, 86: 86, 87: 87, 88: 88, 89: 89, 90: 90, 91: 91, 92: 92, 93: 93, 94: 94, 95: 95}
+                })
+                .assign(well_number=lambda x: x.well_number + 1)
+                .assign(sample_name=pd.NA)
+                .assign(conc_name=pd.NA)
+            )
+
+            return plate
+        
+        
+        def make_columns(start, end):
+            column = start[1:]
+            start_letter = string.ascii_uppercase.find(start[0])
+            end_letter = string.ascii_uppercase.find(end[0]) + 1
+            wells = [f"{letter}{column}" for letter in string.ascii_uppercase[start_letter:end_letter]]
+            return wells
+
+
+        def make_rows(start, end):
+            start_number = int(start[1:])
+            end_number = int(end[1:]) + 1
+            wells = [f"{start[0]}{number}" for number in range(start_number, end_number)]
+            return wells
+
+        
+        def add_sample(plate, start, end, sample):
+
+            df = plate.copy()
+
+            if start[0] != end[0]: # columns
+                wells = make_columns(start, end)
+            else: # rows
+                wells = make_rows(start, end)
+
+            new_samples = (
+                pd.DataFrame()
+                .assign(well=wells)
+                .assign(sample_name=sample)
+            )
+
+            df.set_index('well', inplace=True)
+            df.update(new_samples.set_index('well'))
+
+            return df.reset_index()
+
+
+        def add_conc(plate, start, end, conc):
+
+            df = plate.copy()
+
+            if start[0] != end[0]: # columns
+                column = start[1:]
+                start_letter = string.ascii_uppercase.find(start[0])
+                end_letter = string.ascii_uppercase.find(end[0]) + 1
+                wells = [f"{letter}{column}" for letter in string.ascii_uppercase[start_letter:end_letter]]
+            else: # rows
+                start_number = int(start[1:])
+                end_number = int(end[1:]) + 1
+                wells = [f"{start[0]}{number}" for number in range(start_number, end_number)]
+
+            new_concs = (
+                pd.DataFrame()
+                .assign(well=wells)
+                .assign(conc_name=conc)
+            )
+
+            df.set_index('well', inplace=True)
+            df.update(new_concs.set_index('well'))
+
+            return df.reset_index()
+        
+        
+        def parse_input(lines):
+            pass
+        
+
+        def make_qpcr_plate(blueprint, replicate = "singleton"):
+
+            plate = make_plate()
+
+            for x in blueprint.itertuples():
+                plate = add_sample(plate, x.start, x.end, x.sample)
+                if x.info == "":
+                    continue
+                plate = add_conc(plate, x.start, x.end, x.info)
+
+
+            if replicate == "duplicate":
+                new = [
+                    pd.DataFrame({"sample_name":[x.sample_name], "conc_name": [x.conc_name], "well_number": [x.well_number + 1]}) 
+                    for x in plate.dropna(subset="sample_name").itertuples()
+                ]
+                new = (
+                    pd.concat(new)
+                )
+
+                plate.set_index('well_number', inplace=True)
+                plate.update(new.set_index('well_number'))
+
+                return plate.reset_index()
+
+            if replicate == "singleton":
+                return plate
+
+        
+        def plot_96_well_plate(plate, exp_name):
+            fig, ax = plt.subplots(figsize=(13, 8))
+
+            samples = (
+                plate
+                .sort_values(["rows", "columns"])
+                .sample_name
+                .values
+            )
+
+            concentration = (
+                plate
+                .sort_values(["rows", "columns"])
+                .conc_name
+                .values
+            )
+
+            # Create a dictionary to map sample names to colors
+            color_mapping = {name: plt.cm.viridis(i / len(set(samples))) for i, name in enumerate(set(samples))}
+
+            index = 0
+            for row in 'ABCDEFGH':
+                for col in range(1, 13):
+                    x = col
+                    y = ord('H') - ord(row) + 1
+                    sample_name = samples[index] 
+                    color = color_mapping[sample_name]
+                    sample_name = samples[index] if not pd.isna(samples[index]) else ""
+                    sample_conc = concentration[index] if not pd.isna(concentration[index]) else ""
+
+                    circle = plt.Circle((x, y), 0.4, color=color, fill=False)
+                    ax.add_patch(circle)
+
+                    ax.text(x, y, f"{sample_name}", color='black', ha='center', va='bottom')
+                    ax.text(x, y, f"{sample_conc}", color='black', ha='center', va='top')
+                    index += 1
+
+            ax.set_xticks(range(1, 13))
+            ax.set_yticks(range(1, 9), position="top")
+            ax.set_xticklabels([str(i) for i in range(1, 13)])
+            ax.set_yticklabels([chr(ord('H') - i) for i in range(8)])
+
+            ax.set_xlim(0.5, 12.5)
+            ax.set_ylim(0.5, 8.5)
+
+            # ax.set_xlabel('Columns')
+            # ax.set_ylabel('Rows')
+
+            ax.set_title(exp_name)
+            ax.xaxis.tick_top()
+            return fig
+        
+
+        def parse_input(lines):
+            wells = make_plate().well.values
+            dfs = []
+            for line in lines:
+                line = line.split(" ")
+
+                df = {"info": ""}
+                for i,e in enumerate(line):
+                    if i == 0:
+                        df["start"] = e
+                    elif i == 1:
+                        if e in wells:
+                            df["end"] = e
+                        else:
+                            df["end"] = df["start"]
+                            df["sample"] = e
+                            if len(line) == 3:
+                                df["info"] = line[2]
+                                break
+                    elif i == 2:
+                        if "," not in e:
+                            df["sample"] = e
+                        else:
+                            e = e.split(",")
+                            df["sample"] = e
+                    elif i == 3:
+                        if "," not in e:
+                            df["info"] = e
+                        else:
+                            e = e.split(",")
+                            df["info"] = e
+
+
+                df = pd.DataFrame([df], index=[0])
+                dfs.append(df)
+            return pd.concat(dfs, ignore_index=True).dropna(axis=0)
+            
+        
+        def main(*args, **kws):
+            replicate = document.querySelector("[name='replicate']:checked").id
+        
+            bild = Element("bild")
+            bild.clear()
+        
+            date = datetime.now().strftime("%Y-%m-%d")
+            name = Element("title").value.strip()
+            name_date = f"{name} {date}"
+        
+            lines = Element("information").value.split("\n")
+            lines = [x.strip() for x in lines]
+            blueprint = parse_input(lines)
+            plate = make_qpcr_plate(blueprint, replicate)
+            plot = plot_96_well_plate(plate, name_date)
+        
+            #Element("test").write(plate)
+            display(plot, target="bild")
+        
+        
+        # when everything starts
+        date = datetime.now().strftime("%Y-%m-%d")
+        name = "Empty experiment"
+        name_date = f"{name} {date}"
+        empty_plate = make_plate()
+        empty_plot = plot_96_well_plate(empty_plate, name_date)
+        display(empty_plot, target="bild")
+        
+
+    </py-script>
+</body>
+</html>
+
+
+
+
+
+
+

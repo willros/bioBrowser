@@ -1,0 +1,197 @@
+<!-- Author: William Rosenbaum -->
+<!--  Github: willros -->
+
+<html>
+<head>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #title {
+            flex: 1;
+            min-height:30;
+            max-height:30;
+        }
+        #cellinfo {
+            flex: 1;
+            min-height: 100;
+        }
+        #upload {
+            flex: 1;
+            min-height: 30;
+            max-height: 30;
+        }
+        #bild {
+            flex: 1;
+        }
+    </style>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <py-config>
+        packages = [
+            "matplotlib",
+            "numpy",
+            "scikit-image",
+        ]
+    </py-config>
+</head>
+<body>
+    <div id="header"> 
+        <h1> Count cells </h1>
+    </div>
+    <input type="file" id="upload">
+    <button id="countcells">Count cells!</button>
+    <div id="cellinfo">
+        <h2> Number of cells counted: </h2>
+        <div id="cellscounted"></div>
+    </div>
+    <div id="processed_image"></div>
+    <div id="bild"></div>
+    <py-script>
+        import numpy as np
+        from scipy import ndimage as ndi
+        from skimage.measure import label, regionprops
+        from skimage.color import label2rgb
+        from skimage.morphology import disk, opening, remove_small_objects
+        from skimage.segmentation import watershed
+        from skimage.feature import peak_local_max
+        from skimage.io import imread, imshow
+        from skimage.filters import threshold_otsu
+        from skimage.filters import median
+        from skimage.color import rgb2gray
+        import matplotlib.pyplot as plt
+        import asyncio
+        import io
+        from pyscript import when
+        from js import document
+
+        def apply_opening(
+            binary_img, 
+            selem_parameter=15, 
+            remove_objects=1000
+        ):
+            selem = disk(selem_parameter)
+            opened_image = opening(binary_img,selem)
+            opened_image = remove_small_objects(opened_image.astype(bool), remove_objects).astype(np.int64)
+            
+            return opened_image
+        
+        
+        def apply_watershed(
+            labeled_img,
+            median_size,
+            min_distance=30,
+            remove_objects=1000
+        ):
+            distance = ndi.distance_transform_edt(labeled_img)
+            local_max_coords = peak_local_max(distance, min_distance=min_distance,exclude_border=0)
+            local_max_mask = np.zeros(distance.shape, dtype=bool)
+            local_max_mask[tuple(local_max_coords.T)] = True
+            markers = label(local_max_mask)
+            labels = watershed(-distance, markers, mask=labeled_img, watershed_line=True)
+        
+            # only apply watershed on large size cells
+            large_cells = remove_small_objects(labeled_img.astype(bool), 2*median_size).astype(np.int64)
+            final = labeled_img
+            final[large_cells > 0] = labels[large_cells > 0]
+            final = remove_small_objects(label(final), remove_objects).astype(np.int64)
+        
+            return final
+        
+        def find_median_cell_size(labeled_img):
+            area = []
+            for region in regionprops(labeled_img):
+                area.append(region.area)
+            median = np.median(np.array(area))
+            return median
+        
+        def plot_counted_cells(final, other):
+            image_label_overlay = label2rgb(final, image=other, bg_label=0)
+        
+            fig, ax = plt.subplots(figsize=(13, 9))
+            ax.imshow(image_label_overlay)
+            plt.close()
+            for region in regionprops(final):
+                y, x = region.centroid
+                circle = plt.Circle((x, y), 10, color="lightgreen", fill=True)
+                ax.add_patch(circle)
+                
+            ax.set_title("Counted cells")
+            plt.close()
+        
+            return fig
+
+
+        def plot_image(img):
+            fig, ax = plt.subplots(figsize=(13, 9))
+            ax.imshow(img)
+            plt.close()
+        
+            return fig
+
+
+        def plot_2_images(img1, img2):
+            fig, ax = plt.subplots(ncols=2, nrows=1, figsize=(13, 9))
+            ax[0].imshow(img1)
+            ax[0].set_title("Original")
+            ax[1].imshow(img2)
+            ax[1].set_title("Masked")
+            
+            plt.tight_layout()
+            plt.close()
+            return fig
+                        
+
+        def main(img):
+            Element("bild").clear()
+            Element("processed_image").clear()
+            Element("cellscounted").clear()
+        
+            grey = rgb2gray(img)
+            thr = threshold_otsu(grey)
+            img_thresh_otsu = grey < thr
+
+            # TODO: add buttons for the user the change the selem_paraneter and remove_objects.
+            opened = apply_opening(img_thresh_otsu, selem_parameter=4, remove_objects=1000)
+            final = label(opened)
+            median = find_median_cell_size(final)
+            final = apply_watershed(final, median, remove_objects=1000) 
+            cell_number = len(np.unique(final)) - 1
+            processed = plot_2_images(img, final)
+            counted_cells = plot_counted_cells(final, img)
+
+                                       
+            display(processed, target="processed_image")
+            display(counted_cells, target="bild")
+            Element("cellscounted").write(cell_number)
+                                        
+                                        
+        @when('click', '#countcells')
+        async def processFile(*args):
+            Element("bild").clear()
+            Element("processed_image").clear()
+            Element("cellscounted").clear()
+            Element("bild").write("Counting cells...")
+            file = document.getElementById('upload').files.item(0)
+
+            array_buf = await file.arrayBuffer() 
+            file_bytes = array_buf.to_bytes() 
+            file_io = io.BytesIO(file_bytes) 
+            img = imread(file_io)
+                                        
+            main(img)
+    </py-script>
+</body>
+</html>
+
+
+
+
+
+
+
+
